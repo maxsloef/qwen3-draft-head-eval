@@ -1,0 +1,72 @@
+
+=== nothink ===
+anchors: 76316; trunk re-forward agrees with its own generated token: 0.993 0.993 0.993 0.993 0.993 0.993 0.993
+
+top-1 accuracy at step s (earlier draft tokens correct)
+head                   s=1    s=2    s=3    s=4    s=5    s=6    s=7   
+dfly                   0.821  0.766  0.719  0.674  0.638  0.602  0.571 
+dfly-nocorr            0.590  0.386  0.303  0.247  0.207  0.176  0.147 
+
+top-5 accuracy
+head                   s=1    s=2    s=3    s=4    s=5    s=6    s=7   
+dfly                   0.948  0.910  0.871  0.834  0.799  0.769  0.741 
+dfly-nocorr            0.837  0.672  0.573  0.499  0.441  0.395  0.350 
+
+distribution overlap with trunk (1 - TV)
+head                   s=1    s=2    s=3    s=4    s=5    s=6    s=7   
+dfly                   0.823  0.768  0.719  0.675  0.637  0.602  0.570 
+dfly-nocorr            0.559  0.365  0.285  0.231  0.193  0.164  0.137 
+
+all of steps 1..s correct
+head                   s=1    s=2    s=3    s=4    s=5    s=6    s=7     mean accepted
+dfly                   0.821  0.665  0.543  0.450  0.380  0.326  0.280   3.46
+dfly-nocorr            0.590  0.242  0.088  0.031  0.011  0.003  0.001   0.97
+
+true token is in the head's 32K vocabulary
+head                   s=1    s=2    s=3    s=4    s=5    s=6    s=7   
+dfly                   1.000  1.000  1.000  1.000  1.000  1.000  1.000 
+dfly-nocorr            1.000  1.000  1.000  1.000  1.000  1.000  1.000 
+
+mean accepted draft tokens (chain of 7) by category
+head                      coding extractio humanitie      math math_reas        qa       rag reasoning  roleplay      stem summariza translati   writing
+dfly                        4.57      5.07      2.37      5.99      5.87      2.37      2.95      3.72      2.00      3.03      2.36      2.47      1.95
+dfly-nocorr                 0.98      1.47      0.72      1.30      1.30      0.73      0.87      1.12      0.65      0.78      0.96      0.89      0.65
+
+convention check, step-1 top-1 by (norm_before_residual, layer offset)
+head                     (False, 0)   (False, 1)    (True, 0)    (True, 1)
+
+=== think ===
+anchors: 120000; trunk re-forward agrees with its own generated token: 0.993 0.993 0.993 0.993 0.993 0.993 0.993
+
+top-1 accuracy at step s (earlier draft tokens correct)
+head                   s=1    s=2    s=3    s=4    s=5    s=6    s=7   
+dfly                   0.769  0.698  0.630  0.568  0.511  0.465  0.425 
+dfly-nocorr            0.572  0.348  0.251  0.190  0.150  0.120  0.097 
+
+top-5 accuracy
+head                   s=1    s=2    s=3    s=4    s=5    s=6    s=7   
+dfly                   0.939  0.889  0.831  0.775  0.724  0.680  0.644 
+dfly-nocorr            0.834  0.630  0.506  0.417  0.353  0.304  0.261 
+
+distribution overlap with trunk (1 - TV)
+head                   s=1    s=2    s=3    s=4    s=5    s=6    s=7   
+dfly                   0.772  0.699  0.630  0.568  0.512  0.466  0.426 
+dfly-nocorr            0.550  0.333  0.239  0.181  0.142  0.114  0.093 
+
+all of steps 1..s correct
+head                   s=1    s=2    s=3    s=4    s=5    s=6    s=7     mean accepted
+dfly                   0.769  0.568  0.416  0.304  0.222  0.163  0.119   2.56
+dfly-nocorr            0.572  0.214  0.071  0.022  0.006  0.002  0.000   0.89
+
+true token is in the head's 32K vocabulary
+head                   s=1    s=2    s=3    s=4    s=5    s=6    s=7   
+dfly                   1.000  1.000  1.000  1.000  1.000  1.000  1.000 
+dfly-nocorr            1.000  1.000  1.000  1.000  1.000  1.000  1.000 
+
+mean accepted draft tokens (chain of 7) by category
+head                      coding extractio humanitie      math math_reas        qa       rag reasoning  roleplay      stem summariza translati   writing
+dfly                        2.48      3.11      1.74      3.57      3.56      1.95      2.69      2.64      1.78      2.24      2.04      2.72      1.79
+dfly-nocorr                 0.94      1.17      0.72      1.09      1.07      0.73      0.95      1.12      0.71      0.81      0.90      0.75      0.80
+
+convention check, step-1 top-1 by (norm_before_residual, layer offset)
+head                     (False, 0)   (False, 1)    (True, 0)    (True, 1)

@@ -20,6 +20,9 @@ HEADS = {  # name: (repo, weight file, norm_before_residual, trunk-layer offset)
     "angelslim": ("AngelSlim/Qwen3-8B_eagle3", "pytorch_model.bin", False, 0),
     "redhat": ("RedHatAI/Qwen3-8B-speculator.eagle3", "model.safetensors", True, 0),
     "redhat+1": ("RedHatAI/Qwen3-8B-speculator.eagle3", "model.safetensors", True, 1),   # same weights, layers 3/19/34 (smoke run preferred these)
+    # Qwen3.5-style MTP block on frozen Qwen3-8B (AngelSpec). Last field = which last-layer hidden state it reads.
+    "angelspec-mtp": ("AngelSlim/Qwen3-8B-MTP-TTT3", "model-00006-of-00006.safetensors", None, "post"),
+    "angelspec-mtp-prenorm": ("AngelSlim/Qwen3-8B-MTP-TTT3", "model-00006-of-00006.safetensors", None, "pre"),
 }
 LAYERS = (2, 18, 33)            # inputs to trunk layers 2, n//2, n-3 (n = 36)
 VARIANTS = [(nbr, off) for nbr in (False, True) for off in (0, 1)]   # convention check: norm_before_residual x layer offset
@@ -43,15 +46,45 @@ def prep():
     for repo, fn, _, _ in HEADS.values():
         if not os.path.exists(f"/out/heads/{repo}/{fn}"):
             hf_hub_download(repo, fn, local_dir=f"/out/heads/{repo}", cache_dir="/tmp/hfc")
+    if not os.path.exists(f"/out/heads/{DFLY[0]}/{DFLY[1]}"):
+        hf_hub_download(*DFLY, local_dir=f"/out/heads/{DFLY[0]}", cache_dir="/tmp/hfc")
     out.commit()
 
 
+DFLY = ("AngelSlim/Qwen3-8B-DFly-Block8", "pytorch_model.bin")
+# Block drafters: name -> offset added to the trunk layer ids (1 = read layer outputs, as AngelSpec documents; 0 = layer inputs).
+# Each yields two result rows: "<name>" (with hidden correction, teacher-forced) and "<name>-nocorr" (pure parallel).
+BLOCKS = {"dfly": 1, "dfly-off0": 0}
+
+
+@app.function(volumes={"/out": out}, timeout=1800, cpu=4, memory=24 * 1024)
+def inspect_dfly():
+    import os
+    import torch
+    from huggingface_hub import hf_hub_download
+    repo, fn = DFLY
+    if not os.path.exists(f"/out/heads/{repo}/{fn}"):
+        hf_hub_download(repo, fn, local_dir=f"/out/heads/{repo}", cache_dir="/tmp/hfc")
+        out.commit()
+    sd = torch.load(f"/out/heads/{repo}/{fn}", map_location="cpu", weights_only=True)
+    lines = [f"{k} {tuple(v.shape)} {v.dtype}" for k, v in sd.items()]
+    for k, v in sd.items():
+        if v.numel() <= 40:
+            lines.append(f"VALUE {k} {v.float().flatten().tolist()}")
+    return "\n".join(lines)
+
+
+@app.local_entrypoint()
+def dfly_keys():
+    print(inspect_dfly.remote())
+
+
 @app.function(gpu="L40S", volumes={"/hf": hf, "/out": out}, timeout=3600, cpu=8, memory=64 * 1024)
-def run_shard(cond: str, shard: int, n_shards: int, max_new: int = 256, limit: int = 0):
+def run_shard(cond: str, shard: int, n_shards: int, max_new: int = 256, limit: int = 0, only: str = ""):
     import torch
     from safetensors.torch import load_file
     from transformers import AutoModelForCausalLM, AutoTokenizer
-    from heads import Head
+    from heads import DFly, Head, MTPHead
 
     torch.set_grad_enabled(False)
     dev = "cuda"
@@ -63,14 +96,25 @@ def run_shard(cond: str, shard: int, n_shards: int, max_new: int = 256, limit: i
     E = model.get_input_embeddings().weight
     heads = {}
     for name, (repo, fn, nbr, off) in HEADS.items():
+        if only and name not in only.split(","):
+            continue
         p = f"/out/heads/{repo}/{fn}"
         sd = load_file(p) if fn.endswith(".safetensors") else torch.load(p, map_location="cpu", weights_only=True)
         if shard == 0:
             print(name, {k: tuple(v.shape) for k, v in sd.items()}, flush=True)
-        heads[name] = Head(sd, E, nbr, dev)
+        heads[name] = MTPHead(sd, E, model.lm_head.weight, dev) if nbr is None else Head(sd, E, nbr, dev)
         heads[name].off = off
         if heads[name].own_embed and shard == 0:
             print(name, "own embedding equals base:", bool((heads[name].embed == E).all()), flush=True)
+
+    blocks = {}
+    for name, off in BLOCKS.items():
+        if only and name not in only.split(","):
+            continue
+        if "sd" not in blocks:
+            blocks["sd"] = DFly(torch.load(f"/out/heads/{DFLY[0]}/{DFLY[1]}", map_location="cpu", weights_only=True), E, model.lm_head.weight, dev)
+        blocks[name] = off
+    dfly = blocks.pop("sd", None)
 
     # ---- 1. greedy generation, batched by length ----
     prompts = [tok(tok.apply_chat_template([{"role": "user", "content": r["turns"][0]}], tokenize=False, add_generation_prompt=True,
@@ -105,11 +149,12 @@ def run_shard(cond: str, shard: int, n_shards: int, max_new: int = 256, limit: i
 
     # ---- 2. teacher-forced trunk pass + head scoring ----
     grabbed = {}
-    for li in sorted({l + o for l in LAYERS for o in (0, 1)}):
+    for li in sorted({l + o for l in LAYERS + DFly.LAYER_IDS for o in (0, 1)}):
         def pre(mod, args, kwargs, li=li):
             grabbed[li] = args[0] if args else kwargs["hidden_states"]
         model.model.layers[li].register_forward_pre_hook(pre, with_kwargs=True)
-    stats = {n: torch.zeros(len(cats), K, len(METRICS), dtype=torch.float64) for n in heads}
+    model.model.norm.register_forward_pre_hook(lambda mod, args: grabbed.__setitem__("pre", args[0]))
+    stats = {n: torch.zeros(len(cats), K, len(METRICS), dtype=torch.float64) for n in list(heads) + [b + x for b in blocks for x in ("", "-nocorr")]}
     var = {n: torch.zeros(len(VARIANTS), 2, dtype=torch.float64) for n in heads}      # [variant] -> (n, step-1 top1)
     seqlen = lambda j: len(seqs[j][0]) + len(seqs[j][1])
     order = sorted(seqs, key=seqlen)
@@ -129,6 +174,7 @@ def run_shard(cond: str, shard: int, n_shards: int, max_new: int = 256, limit: i
         am = (torch.arange(T, device=dev)[None] < lens[:, None]).long()
         final = model.model(input_ids=ids, attention_mask=am).last_hidden_state            # [B,T,d], after the final norm
         feats = {o: torch.cat([grabbed[l + o] for l in LAYERS], -1)[:, : T - 1].float() for o in (0, 1)}
+        feats["post"], feats["pre"] = final[:, : T - 1].float(), grabbed["pre"][:, : T - 1].float()
         Tm = T - 1
         pos = torch.arange(Tm, device=dev)[None].expand(bs, Tm)
         # anchor i is scored when its first target (token i+2) is generated text and its last (token i+K+1) exists
@@ -137,7 +183,7 @@ def run_shard(cond: str, shard: int, n_shards: int, max_new: int = 256, limit: i
         vcat = cat_id[vb]
         tok_at = lambda off: ids.gather(1, (pos + off).clamp(max=T - 1))
         for name, h in heads.items() if len(vb) else []:
-            for vn, (nbr, off) in enumerate(VARIANTS):          # off-convention variants, step 1 only
+            for vn, (nbr, off) in enumerate(VARIANTS if h.nbr is not None else []):   # off-convention variants, step 1 only
                 if (nbr, off) == (h.nbr, h.off):
                     continue
                 g = h.step1(tok_at(1), feats[off], nbr=nbr, keep=False)
@@ -166,9 +212,29 @@ def run_shard(cond: str, shard: int, n_shards: int, max_new: int = 256, limit: i
                     m[sl, 5] = alive[sl]
                     m[sl, 6] = bp.argmax(-1) == true[sl]
                 stats[name][:, s - 1] += torch.zeros(len(cats), len(METRICS), dtype=torch.float64, device=dev).index_add_(0, vcat, m).cpu()
-                if s == 1:
+                if s == 1 and h.nbr is not None:
                     var[name][VARIANTS.index((h.nbr, h.off))] += torch.tensor([len(vb), m[:, 1].sum().item()], dtype=torch.float64)
             h.clear()
+        for name, off in blocks.items() if len(vb) else []:          # block drafters: one sequence at a time
+            for b in range(bs):
+                sel = (vb == b).nonzero(as_tuple=True)[0]
+                Lb = int(lens[b])
+                f5 = torch.stack([grabbed[l + off][b, :Lb] for l in DFly.LAYER_IDS], 1).float()
+                for c in range(0, len(sel), 128):
+                    r = sel[c:c + 128]
+                    outs = dfly.predict(ids[b, :Lb], f5, vi[r] + 1)        # anchor a = i + 1; slot s predicts token i + 1 + s
+                    for g, suffix in zip(outs, ("-nocorr", "")):
+                        alive = torch.ones(len(r), dtype=torch.bool, device=dev)
+                        for s in range(1, K + 1):
+                            true = ids[b, vi[r] + s + 1]
+                            lg = dfly.logits(g[:, s])
+                            top5 = lg.topk(5, -1).indices
+                            bp = model.lm_head(final[b, vi[r] + s]).float().softmax(-1)
+                            hit = top5[:, 0] == true
+                            alive &= hit
+                            m = torch.stack([torch.ones_like(hit), hit, (top5 == true[:, None]).any(-1), torch.ones_like(hit),
+                                             torch.minimum(bp, lg.softmax(-1)).sum(-1), alive, bp.argmax(-1) == true], 1).double()
+                            stats[name + suffix][:, s - 1] += torch.zeros(len(cats), len(METRICS), dtype=torch.float64, device=dev).index_add_(0, vcat[r], m).cpu()
         i += bs
         print(f"[{cond}/{shard}] scored {i}/{len(order)} (T={T}, anchors={len(vb)})", flush=True)
     return {"cond": cond, "shard": shard, "cats": cats,
@@ -178,10 +244,10 @@ def run_shard(cond: str, shard: int, n_shards: int, max_new: int = 256, limit: i
 
 
 @app.function(volumes={"/out": out}, timeout=2 * 3600, cpu=2)
-def orchestrate(n_shards: int = 4, max_new: int = 256, limit: int = 0, tag: str = "main", conds: str = "nothink,think"):
+def orchestrate(n_shards: int = 4, max_new: int = 256, limit: int = 0, tag: str = "main", conds: str = "nothink,think", only: str = ""):
     import torch
     prep.remote()
-    jobs = [(c, s, n_shards, max_new, limit) for c in conds.split(",") for s in range(n_shards)]
+    jobs = [(c, s, n_shards, max_new, limit, only) for c in conds.split(",") for s in range(n_shards)]
     res = {"K": K, "metrics": METRICS, "variants": VARIANTS, "max_new": max_new, "conds": {}}
     gens = []
     for r in run_shard.starmap(jobs):
@@ -201,8 +267,8 @@ def orchestrate(n_shards: int = 4, max_new: int = 256, limit: int = 0, tag: str 
 
 
 @app.local_entrypoint()
-def main(n_shards: int = 4, max_new: int = 256, limit: int = 0, tag: str = "main", conds: str = "nothink,think"):
-    fetch(orchestrate.remote(n_shards, max_new, limit, tag, conds))
+def main(n_shards: int = 4, max_new: int = 256, limit: int = 0, tag: str = "main", conds: str = "nothink,think", only: str = ""):
+    fetch(orchestrate.remote(n_shards, max_new, limit, tag, conds, only))
 
 
 @app.function(volumes={"/out": out}, timeout=600)

@@ -1,0 +1,45 @@
+
+=== nothink ===
+anchors: 464; trunk re-forward agrees with its own generated token: 0.991 0.991 0.991 0.991 0.991 0.989 0.989
+
+top-1 accuracy at step s (earlier draft tokens correct)
+head                   s=1    s=2    s=3    s=4    s=5    s=6    s=7   
+whiflash               0.761  0.720  0.690  0.698  0.692  0.670  0.644 
+angelspec-mtp          0.728  0.591  0.515  0.450  0.386  0.323  0.280 
+angelspec-mtp-prenorm  0.341  0.241  0.188  0.114  0.112  0.101  0.091 
+
+top-5 accuracy
+head                   s=1    s=2    s=3    s=4    s=5    s=6    s=7   
+whiflash               0.955  0.931  0.929  0.918  0.903  0.905  0.875 
+angelspec-mtp          0.918  0.825  0.756  0.681  0.606  0.541  0.496 
+angelspec-mtp-prenorm  0.614  0.453  0.379  0.315  0.295  0.256  0.224 
+
+distribution overlap with trunk (1 - TV)
+head                   s=1    s=2    s=3    s=4    s=5    s=6    s=7   
+whiflash               0.714  0.668  0.657  0.646  0.629  0.611  0.583 
+angelspec-mtp          0.675  0.525  0.420  0.337  0.283  0.236  0.196 
+angelspec-mtp-prenorm  0.249  0.144  0.103  0.076  0.066  0.055  0.050 
+
+all of steps 1..s correct
+head                   s=1    s=2    s=3    s=4    s=5    s=6    s=7     mean accepted
+whiflash               0.761  0.545  0.392  0.280  0.216  0.166  0.123   2.48
+angelspec-mtp          0.728  0.483  0.321  0.211  0.144  0.101  0.067   2.06
+angelspec-mtp-prenorm  0.341  0.110  0.034  0.015  0.006  0.000  0.000   0.51
+
+true token is in the head's 32K vocabulary
+head                   s=1    s=2    s=3    s=4    s=5    s=6    s=7   
+whiflash               0.989  0.989  0.989  0.989  0.989  0.989  0.989 
+angelspec-mtp          1.000  1.000  1.000  1.000  1.000  1.000  1.000 
+angelspec-mtp-prenorm  1.000  1.000  1.000  1.000  1.000  1.000  1.000 
+
+mean accepted draft tokens (chain of 7) by category
+head                      coding extractio humanitie      math math_reas        qa       rag reasoning  roleplay      stem summariza translati   writing
+whiflash                    0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      2.48
+angelspec-mtp               0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      2.06
+angelspec-mtp-prenorm       0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.51
+
+convention check, step-1 top-1 by (norm_before_residual, layer offset)
+head                     (False, 0)   (False, 1)    (True, 0)    (True, 1)
+whiflash                      0.761        0.737        0.491        0.446
+angelspec-mtp                 0.000        0.000        0.000        0.000
+angelspec-mtp-prenorm         0.000        0.000        0.000        0.000

@@ -1,0 +1,48 @@
+
+=== nothink ===
+anchors: 464; trunk re-forward agrees with its own generated token: 0.991 0.991 0.991 0.991 0.991 0.989 0.989
+
+top-1 accuracy at step s (earlier draft tokens correct)
+head                   s=1    s=2    s=3    s=4    s=5    s=6    s=7   
+dfly                   0.731  0.636  0.569  0.494  0.444  0.407  0.366 
+dfly-nocorr            0.455  0.276  0.172  0.134  0.106  0.067  0.065 
+dfly-off0              0.713  0.629  0.569  0.500  0.433  0.412  0.358 
+dfly-off0-nocorr       0.438  0.246  0.175  0.134  0.106  0.065  0.056 
+
+top-5 accuracy
+head                   s=1    s=2    s=3    s=4    s=5    s=6    s=7   
+dfly                   0.886  0.841  0.772  0.731  0.670  0.644  0.603 
+dfly-nocorr            0.681  0.502  0.360  0.272  0.263  0.198  0.162 
+dfly-off0              0.873  0.843  0.752  0.716  0.672  0.638  0.597 
+dfly-off0-nocorr       0.653  0.474  0.328  0.265  0.237  0.192  0.149 
+
+distribution overlap with trunk (1 - TV)
+head                   s=1    s=2    s=3    s=4    s=5    s=6    s=7   
+dfly                   0.727  0.638  0.568  0.506  0.452  0.417  0.385 
+dfly-nocorr            0.420  0.239  0.160  0.121  0.100  0.070  0.062 
+dfly-off0              0.714  0.632  0.558  0.505  0.450  0.421  0.372 
+dfly-off0-nocorr       0.405  0.227  0.153  0.119  0.097  0.068  0.055 
+
+all of steps 1..s correct
+head                   s=1    s=2    s=3    s=4    s=5    s=6    s=7     mean accepted
+dfly                   0.731  0.496  0.332  0.222  0.162  0.116  0.088   2.15
+dfly-nocorr            0.455  0.164  0.050  0.024  0.009  0.002  0.000   0.70
+dfly-off0              0.713  0.476  0.334  0.222  0.159  0.123  0.097   2.12
+dfly-off0-nocorr       0.438  0.138  0.047  0.017  0.006  0.002  0.000   0.65
+
+true token is in the head's 32K vocabulary
+head                   s=1    s=2    s=3    s=4    s=5    s=6    s=7   
+dfly                   1.000  1.000  1.000  1.000  1.000  1.000  1.000 
+dfly-nocorr            1.000  1.000  1.000  1.000  1.000  1.000  1.000 
+dfly-off0              1.000  1.000  1.000  1.000  1.000  1.000  1.000 
+dfly-off0-nocorr       1.000  1.000  1.000  1.000  1.000  1.000  1.000 
+
+mean accepted draft tokens (chain of 7) by category
+head                      coding extractio humanitie      math math_reas        qa       rag reasoning  roleplay      stem summariza translati   writing
+dfly                        0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      2.15
+dfly-nocorr                 0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.70
+dfly-off0                   0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      2.12
+dfly-off0-nocorr            0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.65
+
+convention check, step-1 top-1 by (norm_before_residual, layer offset)
+head                     (False, 0)   (False, 1)    (True, 0)    (True, 1)

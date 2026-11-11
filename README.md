@@ -21,6 +21,22 @@ Qwen3-8B answered the 480 [Spec-Bench](https://github.com/hemingkx/Spec-Bench) p
 
 Full tables (top-5, distribution overlap, per-category, vocabulary coverage) are in [`results/main/summary.txt`](results/main/summary.txt).
 
+## Tencent AngelSpec drafters (added later, same data)
+
+Two more Qwen3-8B drafters from [AngelSpec](https://github.com/Tencent/AngelSpec) were scored on exactly the same positions. Neither is an EAGLE-3 head.
+
+| Drafter | What it is | Step-1 top-1, thinking off | Correct run of 7, thinking off | Step-1 top-1, thinking on | Correct run of 7, thinking on |
+|---|---|---|---|---|---|
+| [AngelSlim/Qwen3-8B-DFly-Block8](https://huggingface.co/AngelSlim/Qwen3-8B-DFly-Block8) | 5-layer block drafter, about 1.3B parameters, reads 5 trunk layers | **0.821** | **3.46** | **0.769** | **2.56** |
+| [AngelSlim/Qwen3-8B-MTP-TTT3](https://huggingface.co/AngelSlim/Qwen3-8B-MTP-TTT3) | Qwen3.5-style MTP block, one layer, reads only the last trunk layer | 0.779 | 2.79 | 0.718 | 1.95 |
+| WhiFlash EAGLE-3 (best EAGLE-3, thinking off) | one layer, reads 3 trunk layers | 0.750 | 2.47 | 0.653 | 1.63 |
+| Tengyunw EAGLE-3 (best EAGLE-3, thinking on) | one layer, reads 3 trunk layers | 0.716 | 2.04 | 0.711 | 1.96 |
+
+- The MTP block is the best single-layer head at step 1 in both modes, uses the trunk's own unembedding over the full vocabulary, and reads only the post-norm last hidden state. It was trained for 3 draft steps and fades faster than WhiFlash beyond that (0.436 against 0.620 at step 7, thinking off).
+- DFly is the best predictor overall, but it is a separate 5-layer network on top of the trunk's hidden states. Its slots are predicted in parallel, then a correction module conditions each slot on the embedding of the previous token. The rows above give it the true previous token, as the chain heads get. Without the correction (pure parallel prediction, which is not how it was trained to be used) it scores 0.590 at step 1 and 0.147 at step 7, thinking off.
+- Results: [`results/mtp/summary.txt`](results/mtp/summary.txt), [`results/dfly/summary.txt`](results/dfly/summary.txt). Run with `--only angelspec-mtp` or `--only dfly`.
+- The DFly checkpoint's `config.json` on the Hub does not match its weights; the settings used here come from `angelspec/config/dfly_qwen3_8b_draft_config.json` in the AngelSpec repo (trunk layers 1/9/17/25/33, mask token 151669), with block size 8.
+
 ## How a head is scored
 
 At position *i* the head receives the trunk's hidden states at *i* (the inputs to layers 2, 18 and 33, fused by a linear layer) and the embedding of token *i*+1, and predicts token *i*+2. For steps 2 to 7 it feeds its own output back in with the next true token and predicts one token further. Metrics per step:

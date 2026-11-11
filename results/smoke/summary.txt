@@ -1,0 +1,52 @@
+
+=== nothink ===
+anchors: 464; trunk re-forward agrees with its own generated token: 0.991 0.991 0.991 0.991 0.991 0.989 0.989
+
+top-1 accuracy at step s (earlier draft tokens correct)
+head       s=1    s=2    s=3    s=4    s=5    s=6    s=7   
+whiflash   0.761  0.720  0.690  0.698  0.692  0.670  0.644 
+tengyunw   0.709  0.625  0.629  0.614  0.597  0.565  0.537 
+angelslim  0.496  0.351  0.297  0.278  0.256  0.209  0.175 
+redhat     0.653  0.612  0.466  0.420  0.381  0.353  0.330 
+
+top-5 accuracy
+head       s=1    s=2    s=3    s=4    s=5    s=6    s=7   
+whiflash   0.955  0.931  0.929  0.918  0.903  0.905  0.875 
+tengyunw   0.931  0.903  0.901  0.888  0.864  0.832  0.812 
+angelslim  0.750  0.601  0.565  0.500  0.440  0.399  0.369 
+redhat     0.884  0.849  0.722  0.672  0.603  0.599  0.537 
+
+distribution overlap with trunk (1 - TV)
+head       s=1    s=2    s=3    s=4    s=5    s=6    s=7   
+whiflash   0.714  0.668  0.657  0.646  0.629  0.611  0.583 
+tengyunw   0.659  0.591  0.575  0.552  0.534  0.512  0.492 
+angelslim  0.422  0.295  0.250  0.212  0.184  0.158  0.129 
+redhat     0.598  0.553  0.374  0.344  0.290  0.279  0.260 
+
+all of steps 1..s correct
+head       s=1    s=2    s=3    s=4    s=5    s=6    s=7     mean accepted
+whiflash   0.761  0.545  0.392  0.280  0.216  0.166  0.123   2.48
+tengyunw   0.709  0.444  0.304  0.218  0.157  0.119  0.086   2.04
+angelslim  0.496  0.203  0.099  0.054  0.032  0.024  0.015   0.92
+redhat     0.653  0.390  0.188  0.121  0.073  0.043  0.030   1.50
+
+true token is in the head's 32K vocabulary
+head       s=1    s=2    s=3    s=4    s=5    s=6    s=7   
+whiflash   0.989  0.989  0.989  0.989  0.989  0.989  0.989 
+tengyunw   0.987  0.987  0.987  0.987  0.987  0.987  0.987 
+angelslim  0.950  0.950  0.950  0.950  0.948  0.950  0.950 
+redhat     0.946  0.946  0.948  0.948  0.946  0.948  0.948 
+
+mean accepted draft tokens (chain of 7) by category
+head          coding extractio humanitie      math math_reas        qa       rag reasoning  roleplay      stem summariza translati   writing
+whiflash        0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      2.48
+tengyunw        0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      2.04
+angelslim       0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.92
+redhat          0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00      1.50
+
+convention check, step-1 top-1 by (norm_before_residual, layer offset)
+head         (False, 0)   (False, 1)    (True, 0)    (True, 1)
+whiflash          0.761        0.737        0.491        0.446
+tengyunw          0.709        0.672        0.179        0.138
+angelslim         0.496        0.457        0.151        0.147
+redhat            0.101        0.103        0.653        0.683

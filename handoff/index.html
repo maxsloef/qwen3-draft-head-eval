@@ -1,0 +1,285 @@
+<title>Qwen3-8B Draft Head Handoff</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Layout: one reading column (lab-notebook handoff); tables and charts get their own scroll boxes. */
+:root {
+  --bg: #f7f8f9; --surface: #fcfcfb; --fg: #14171a; --fg2: #4b5258; --muted: #80878d;
+  --line: #dfe2e4; --axis: #c2c7ca; --accent: #1c5cab; --mark: #e6eef8;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --display: "Space Grotesk", "IBM Plex Sans", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1113; --surface: #1a1a19; --fg: #eceeef; --fg2: #bcc2c6; --muted: #868d92;
+  --line: #2b2f32; --axis: #3a3f43; --accent: #86b6ef; --mark: #1b2a3d;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1113; --surface: #1a1a19; --fg: #eceeef; --fg2: #bcc2c6; --muted: #868d92;
+  --line: #2b2f32; --axis: #3a3f43; --accent: #86b6ef; --mark: #1b2a3d;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font: 16px/1.6 var(--body); }
+.page { max-width: 780px; margin: 0 auto; padding-block: 40px 72px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 44px; }
+header { display: flex; flex-direction: column; gap: 12px; }
+.kicker { font: 500 12px/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 600 34px/1.15 var(--display); margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+h2 { font: 600 21px/1.25 var(--display); margin: 0; text-wrap: balance; }
+h3 { font: 600 15px/1.4 var(--body); margin: 0; }
+p { margin: 0; max-width: 68ch; }
+section { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.lede { font-size: 18px; color: var(--fg2); }
+ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; max-width: 68ch; }
+a { color: var(--accent); text-underline-offset: 2px; }
+a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+code { font: 13.5px var(--mono); background: var(--mark); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+pre { margin: 0; font: 13px/1.55 var(--mono); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; overflow-x: auto; }
+pre code { background: none; padding: 0; font-size: inherit; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 500 12px/1.4 var(--mono); letter-spacing: .04em; color: var(--muted); text-transform: uppercase; white-space: nowrap; }
+td.n, th.n { text-align: right; padding-right: 16px; }
+td b { font-weight: 600; }
+.note { color: var(--fg2); font-size: 14.5px; }
+.verdict { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 4px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+.links { display: flex; flex-direction: column; gap: 8px; }
+.linkrow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.linkrow code { flex: 1 1 260px; min-width: 0; }
+.swatch { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+button.copy { font: 500 12px var(--mono); color: var(--fg2); background: var(--surface); border: 1px solid var(--axis); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+button.copy:hover { color: var(--fg); border-color: var(--fg2); }
+.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.chart { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 14px 8px; min-width: 0; position: relative; }
+.chart svg { display: block; width: 100%; height: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13.5px; color: var(--fg2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.tip { position: absolute; pointer-events: none; background: var(--bg); border: 1px solid var(--axis); border-radius: 5px; padding: 6px 9px; font-size: 12.5px; line-height: 1.5; font-variant-numeric: tabular-nums; white-space: nowrap; z-index: 2; }
+.tip div { display: flex; align-items: center; gap: 6px; }
+.align { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 14.5px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+.align dt { font: 500 12.5px/1.7 var(--mono); color: var(--muted); white-space: nowrap; }
+.align dd { margin: 0; min-width: 0; }
+details summary { cursor: pointer; font-size: 14.5px; color: var(--fg2); }
+details[open] summary { margin-bottom: 10px; }
+@media (max-width: 480px) { h1 { font-size: 27px; } .align { grid-template-columns: 1fr; gap: 0 0; } .align dd { margin-bottom: 8px; } }
+</style>
+
+<div class="page">
+<header>
+  <div class="kicker">Handoff · 11 Nov 2026 · Qwen3-8B</div>
+  <h1>Which published draft head best predicts Qwen3-8B's future tokens</h1>
+  <p class="lede">We wanted a small head that reads Qwen3-8B's own hidden states and predicts the tokens it will produce next, for an interpretability project. Four such heads are already public, so we scored them against each other instead of training one.</p>
+</header>
+
+<section>
+  <h2>The answer</h2>
+  <div class="verdict">
+    <p><b>Use Tengyunw if any of the text involves thinking mode; use WhiFlash if it is strictly thinking off.</b></p>
+    <p>WhiFlash is the best predictor on ordinary answers (75% top-1 on its first prediction) but loses about 10 points on reasoning text. Tengyunw is close behind on answers (72%) and holds 71% on reasoning text. RedHatAI is third in both; AngelSlim is last in both.</p>
+  </div>
+  <div class="links" id="links"></div>
+  <p class="note">Base model: <a href="https://huggingface.co/Qwen/Qwen3-8B">huggingface.co/Qwen/Qwen3-8B</a>. All four are heads on the frozen base model, not separate draft models. They cannot run without it.</p>
+</section>
+
+<section>
+  <h2>How this started</h2>
+  <p>Qwen3.5 ships with a built-in multi-token-prediction (MTP) module: one extra transformer block that takes the trunk's hidden state plus the next token's embedding and predicts the token after that. In Qwen3.5-4B it is 15 tensors, about 120.6M parameters. Qwen3-8B has no such module, and the question was how hard it would be to add one.</p>
+  <p>A literature review found that this retrofit is routine. The standard recipe is EAGLE-3: one transformer layer of about 0.4B parameters, trained on a frozen base model with roughly 0.5M conversations (about 1B tokens) whose responses are regenerated by the base model itself. Four independent EAGLE-3 heads for Qwen3-8B were already on Hugging Face, so the plan changed from training a head to choosing one.</p>
+  <p>The model cards could not settle the choice. Each reports numbers from a different server, draft shape, temperature and benchmark, and they measure serving speed, not prediction quality. So we ran one matched evaluation.</p>
+</section>
+
+<section>
+  <h2>What an EAGLE-3 head does</h2>
+  <dl class="align">
+    <dt>input</dt><dd>At position <i>i</i>: the trunk's hidden states at <i>i</i> (taken from three depths and fused by a linear layer) and the embedding of token <i>i</i>+1.</dd>
+    <dt>step 1</dt><dd>Predicts token <i>i</i>+2, the token after next.</dd>
+    <dt>step 2 to 7</dt><dd>Feeds its own output back in as the hidden state, with the next token's embedding, and predicts one token further each time.</dd>
+    <dt>output</dt><dd>A distribution over a reduced vocabulary of 32,000 tokens, mapped back to Qwen3's 151,936.</dd>
+  </dl>
+  <p>Three properties matter for interpretability work:</p>
+  <ul>
+    <li><b>It predicts the model, not the text.</b> The heads are trained to match Qwen3-8B's own output distribution.</li>
+    <li><b>It reads three trunk layers, not just the last.</b> The inputs to layers 2, 18 and 33 of 36. A claim that future tokens are decodable is a claim about that combination.</li>
+    <li><b>It has a vocabulary ceiling.</b> Between 3% and 6% of the tokens Qwen3-8B produced in this evaluation fall outside each head's 32K vocabulary and can never be predicted.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>How the heads were scored</h2>
+  <ul>
+    <li><b>Prompts:</b> all 480 Spec-Bench prompts (chat, translation, summarisation, question answering, math, retrieval-augmented answers), first turn only.</li>
+    <li><b>Generations:</b> Qwen3-8B answered each prompt greedily, up to 256 new tokens, once with thinking off and once with thinking on.</li>
+    <li><b>Scoring:</b> the full sequence was run back through Qwen3-8B to get its real hidden states. Each head then predicted, at every generated position, the tokens the model actually produced 1 to 7 steps later. Earlier draft tokens were given as the correct ones.</li>
+    <li><b>Sample size:</b> 76,316 positions with thinking off and 120,000 with thinking on. Every head saw exactly the same positions.</li>
+    <li><b>Implementation:</b> the head's forward pass was re-implemented from the SafeAILab and RedHatAI reference code, because the serving stacks only report throughput.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Results</h2>
+  <h3>Top-1 accuracy by how far ahead the head predicts</h3>
+  <div class="legend" id="legend"></div>
+  <div class="charts">
+    <div class="chart" id="c-nothink"></div>
+    <div class="chart" id="c-think"></div>
+  </div>
+  <p class="note">Step 1 is the token after next. Each later step assumes the earlier draft tokens were correct. Hover or tap a chart for values.</p>
+  <details>
+    <summary>Show these numbers as a table</summary>
+    <div class="scroll" id="steptable"></div>
+  </details>
+
+  <h3>Summary by head</h3>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Head</th><th class="n">Step-1 top-1, off</th><th class="n">Correct run of 7, off</th><th class="n">Step-1 top-1, on</th><th class="n">Correct run of 7, on</th><th class="n">Vocab coverage, off</th></tr></thead>
+    <tbody>
+      <tr><td>WhiFlash</td><td class="n"><b>0.750</b></td><td class="n"><b>2.47</b></td><td class="n">0.653</td><td class="n">1.63</td><td class="n">97.0%</td></tr>
+      <tr><td>Tengyunw</td><td class="n">0.716</td><td class="n">2.04</td><td class="n"><b>0.711</b></td><td class="n"><b>1.96</b></td><td class="n">97.3%</td></tr>
+      <tr><td>RedHatAI</td><td class="n">0.671</td><td class="n">1.63</td><td class="n">0.669</td><td class="n">1.58</td><td class="n">94.4%</td></tr>
+      <tr><td>AngelSlim</td><td class="n">0.579</td><td class="n">1.23</td><td class="n">0.560</td><td class="n">1.10</td><td class="n">94.6%</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="note">"Off" and "on" refer to thinking mode. "Correct run of 7" is the mean number of tokens in a row that a 7-token greedy draft gets right. "Vocab coverage" is the share of true tokens that exist in the head's 32K vocabulary.</p>
+  <ul>
+    <li><b>Distribution match agrees with top-1.</b> Overlap with the model's own next-token distribution (1 minus total variation) on step 1, thinking off, is 0.71 for WhiFlash, 0.68 for Tengyunw, 0.63 for RedHatAI and 0.53 for AngelSlim.</li>
+    <li><b>Top-5 is much higher than top-1.</b> On step 1 with thinking off it is 0.92 for WhiFlash, 0.90 for Tengyunw, 0.86 for RedHatAI and 0.80 for AngelSlim.</li>
+    <li><b>Task matters.</b> With thinking off, extraction, coding and math are easiest; translation and roleplay are hardest. WhiFlash leads in every one of the 13 categories.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>How far to trust this</h2>
+  <ul>
+    <li><b>It reproduces two model cards.</b> AngelSlim's card reports 1.99 tokens per cycle with a 2-token chain; this run implies 1.89. RedHatAI's reports 2.1 to 2.5 with a 3-token chain; this run implies 2.34.</li>
+    <li><b>The input conventions were checked empirically.</b> Each head was also scored with the alternative residual and layer conventions. The three SafeAILab-format heads clearly prefer the documented one.</li>
+    <li><b>RedHatAI has a small ambiguity.</b> It scores about one point higher when fed trunk layers one deeper than documented (0.684 against 0.671 on step 1). This does not change its rank. The tables use the documented layers.</li>
+    <li><b>Greedy decoding only.</b> Sampled text was not tested.</li>
+    <li><b>One benchmark.</b> WhiFlash's own card also evaluates on Spec-Bench, so it is at least a familiar distribution for that head.</li>
+    <li><b>Thinking-on covers only the first 256 tokens,</b> which is all reasoning text and no final answer.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Where everything is</h2>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>What</th><th>Where</th></tr></thead>
+    <tbody>
+      <tr><td>Public repo</td><td><a href="https://github.com/maxsloef/qwen3-draft-head-eval">github.com/maxsloef/qwen3-draft-head-eval</a> (code, data, results and the literature review)</td></tr>
+      <tr><td>Head forward pass</td><td><a href="https://github.com/maxsloef/qwen3-draft-head-eval/blob/HEAD/heads.py"><code>heads.py</code></a>: a plain-PyTorch <code>Head</code> class that loads any of the four checkpoints.</td></tr>
+      <tr><td>Evaluation job</td><td><a href="https://github.com/maxsloef/qwen3-draft-head-eval/blob/HEAD/modal_eval.py"><code>modal_eval.py</code></a>: generation, scoring, and merging across 8 GPU shards on Modal.</td></tr>
+      <tr><td>Result tables</td><td><a href="https://github.com/maxsloef/qwen3-draft-head-eval/blob/HEAD/results/main/summary.txt"><code>results/main/summary.txt</code></a> (all metrics, both modes, by category)</td></tr>
+      <tr><td>Raw counts</td><td><a href="https://github.com/maxsloef/qwen3-draft-head-eval/blob/HEAD/results/main/results.json"><code>results/main/results.json</code></a></td></tr>
+      <tr><td>Model outputs scored</td><td><a href="https://github.com/maxsloef/qwen3-draft-head-eval/blob/HEAD/results/main/generations.jsonl"><code>results/main/generations.jsonl</code></a></td></tr>
+      <tr><td>Literature review</td><td><a href="https://github.com/maxsloef/qwen3-draft-head-eval/blob/HEAD/docs/lit-review.md"><code>docs/lit-review.md</code></a>, with source notes in <a href="https://github.com/maxsloef/qwen3-draft-head-eval/tree/HEAD/docs/notes"><code>docs/notes/</code></a></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>To rerun, from a clone of the repo with a Modal account set up:</p>
+  <pre><code>uv run --no-project --python 3.12 --with modal \
+  modal run --detach modal_eval.py::main --n-shards 4 --tag main</code></pre>
+  <p class="note">The job expects a Modal volume named <code>owl-hf</code> holding a Hugging Face cache with <code>Qwen/Qwen3-8B</code>; the README says how to point it at your own. Head weights are downloaded automatically. The full run took 8 L40S containers. The spend was not measured.</p>
+</section>
+
+<section>
+  <h2>Details that took effort to find</h2>
+  <ul>
+    <li><b>Token alignment.</b> The token sequence is shifted by one against the hidden states: position <i>i</i> gets the embedding of token <i>i</i>+1.</li>
+    <li><b>Which layers.</b> The three features are the inputs to trunk layers 2, 18 and 33, which are <code>hidden_states[2]</code>, <code>[18]</code> and <code>[33]</code> in Hugging Face output.</li>
+    <li><b>Later steps skip the fusion layer.</b> From step 2 the head's own pre-norm output is used directly as the feature.</li>
+    <li><b>Residual convention differs.</b> RedHatAI normalises the feature before taking the residual; the other three take the residual first.</li>
+    <li><b>RedHatAI ships its own embedding table,</b> and it is not identical to the base model's. That is why its file is 1.02B parameters against 0.4B for the others.</li>
+    <li><b>Vocabulary mapping is an offset.</b> Target token id = draft index + <code>d2t[draft index]</code>.</li>
+    <li><b>Two checkpoints are pickle files.</b> Tengyunw and AngelSlim ship <code>pytorch_model.bin</code>; load them with <code>weights_only=True</code>.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Open questions for whoever picks this up</h2>
+  <ul>
+    <li><b>Is the three-layer input acceptable?</b> If the interpretability question needs a head that reads only the final layer, none of these four qualifies. A Qwen3.5-style MTP block for Qwen3-8B has been reported by Tencent's AngelSpec, but no downloadable weights were confirmed, so that route means training one.</li>
+    <li><b>Does the 32K vocabulary matter?</b> It hits rare and non-English tokens hardest.</li>
+    <li><b>Sampled text.</b> If the downstream use involves temperature above zero, rerun the evaluation on sampled generations.</li>
+    <li><b>What Tengyunw was trained on.</b> Its robustness on reasoning text suggests its training data included thinking traces, but the card does not say.</li>
+    <li><b>Training cost if one is needed.</b> No source publishes an end-to-end GPU-hour figure for an 8B model. One paper says 200 to 300 GPU-hours; a 2-epoch run over 1B tokens may be tens of GPU-hours by one toolkit's measured throughput.</li>
+  </ul>
+</section>
+</div>
+
+<script>
+const HEADS = [
+  {id: "whiflash", name: "WhiFlash", url: "https://huggingface.co/WhiFlash/Qwen3-8B-EAGLE3", c: "--s1"},
+  {id: "tengyunw", name: "Tengyunw", url: "https://huggingface.co/Tengyunw/qwen3_8b_eagle3", c: "--s2"},
+  {id: "redhat", name: "RedHatAI", url: "https://huggingface.co/RedHatAI/Qwen3-8B-speculator.eagle3", c: "--s3"},
+  {id: "angelslim", name: "AngelSlim", url: "https://huggingface.co/AngelSlim/Qwen3-8B_eagle3", c: "--s4"},
+];
+const DATA = {
+  nothink: {title: "Thinking off", whiflash: [.750,.704,.677,.657,.644,.632,.620], tengyunw: [.716,.650,.616,.593,.576,.561,.546],
+            redhat: [.671,.613,.495,.463,.419,.400,.378], angelslim: [.579,.475,.424,.386,.349,.318,.284]},
+  think: {title: "Thinking on", whiflash: [.653,.578,.541,.521,.497,.484,.469], tengyunw: [.711,.640,.606,.582,.564,.551,.536],
+          redhat: [.669,.603,.478,.451,.404,.386,.365], angelslim: [.560,.450,.396,.357,.324,.293,.268]},
+};
+const el = (t, a = {}, txt) => { const e = document.createElementNS("http://www.w3.org/2000/svg", t); for (const k in a) e.setAttribute(k, a[k]); if (txt != null) e.textContent = txt; return e; };
+
+// links with copy buttons
+const links = document.getElementById("links");
+HEADS.forEach(h => {
+  const row = document.createElement("div"); row.className = "linkrow";
+  row.innerHTML = `<span class="swatch" style="background:var(${h.c})"></span><a href="${h.url}">${h.name}</a><code>${h.url}</code>`;
+  const b = document.createElement("button"); b.className = "copy"; b.type = "button"; b.textContent = "Copy";
+  b.addEventListener("click", () => {
+    const done = () => { b.textContent = "Copied"; setTimeout(() => b.textContent = "Copy", 1400); };
+    const fallback = () => { const r = document.createRange(); r.selectNodeContents(row.querySelector("code")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); };
+    try { navigator.clipboard.writeText(h.url).then(done, fallback); } catch (e) { fallback(); }
+  });
+  row.appendChild(b); links.appendChild(row);
+});
+document.getElementById("legend").innerHTML = HEADS.map(h => `<span><span class="swatch" style="background:var(${h.c})"></span>${h.name}</span>`).join("");
+
+// line charts: one y scale (0 to 0.8), x = draft step 1..7
+const W = 380, H = 270, L = 34, R = 74, T = 30, B = 30, YMAX = 0.8;
+const x = s => L + (s - 1) * (W - L - R) / 6, y = v => T + (1 - v / YMAX) * (H - T - B);
+for (const key in DATA) {
+  const d = DATA[key], box = document.getElementById("c-" + key);
+  const svg = el("svg", {viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": `${d.title}: top-1 accuracy by draft step for four heads`});
+  svg.appendChild(el("text", {x: L, y: 14, fill: "var(--fg)", "font-size": 13, "font-weight": 600}, d.title));
+  for (const v of [0, .2, .4, .6, .8]) {
+    svg.appendChild(el("line", {x1: L, x2: W - R, y1: y(v), y2: y(v), stroke: v ? "var(--line)" : "var(--axis)", "stroke-width": 1}));
+    svg.appendChild(el("text", {x: L - 6, y: y(v) + 4, "text-anchor": "end", fill: "var(--muted)", "font-size": 11}, v.toFixed(1)));
+  }
+  for (let s = 1; s <= 7; s++) svg.appendChild(el("text", {x: x(s), y: H - B + 16, "text-anchor": "middle", fill: "var(--muted)", "font-size": 11}, s));
+  svg.appendChild(el("text", {x: (L + W - R) / 2, y: H - 1, "text-anchor": "middle", fill: "var(--muted)", "font-size": 11}, "draft step"));
+  HEADS.forEach(h => {
+    const v = d[h.id];
+    svg.appendChild(el("path", {d: v.map((p, i) => `${i ? "L" : "M"}${x(i + 1)},${y(p)}`).join(""), fill: "none", stroke: `var(${h.c})`, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round"}));
+    svg.appendChild(el("circle", {cx: x(7), cy: y(v[6]), r: 4, fill: `var(${h.c})`, stroke: "var(--surface)", "stroke-width": 2}));
+    svg.appendChild(el("text", {x: x(7) + 9, y: y(v[6]) + 4, fill: "var(--fg2)", "font-size": 11.5}, h.name));
+  });
+  const cross = el("line", {y1: T, y2: H - B, stroke: "var(--axis)", "stroke-width": 1, visibility: "hidden"});
+  svg.appendChild(cross);
+  const dots = HEADS.map(h => svg.appendChild(el("circle", {r: 4, fill: `var(${h.c})`, stroke: "var(--surface)", "stroke-width": 2, visibility: "hidden"})));
+  const tip = document.createElement("div"); tip.className = "tip"; tip.hidden = true;
+  const move = ev => {
+    const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) * W / r.width;
+    const s = Math.max(1, Math.min(7, Math.round(1 + (px - L) * 6 / (W - L - R))));
+    cross.setAttribute("x1", x(s)); cross.setAttribute("x2", x(s)); cross.setAttribute("visibility", "visible");
+    HEADS.forEach((h, i) => { dots[i].setAttribute("cx", x(s)); dots[i].setAttribute("cy", y(d[h.id][s - 1])); dots[i].setAttribute("visibility", "visible"); });
+    tip.innerHTML = `<div style="color:var(--muted)">step ${s}</div>` + [...HEADS].sort((a, b) => d[b.id][s - 1] - d[a.id][s - 1])
+      .map(h => `<div><span class="swatch" style="background:var(${h.c})"></span>${h.name} <b>${d[h.id][s - 1].toFixed(3)}</b></div>`).join("");
+    tip.hidden = false;
+    const bx = box.getBoundingClientRect(), tx = x(s) * r.width / W + (r.left - bx.left);
+    tip.style.top = "36px";
+    tip.style.left = (tx > bx.width / 2 ? Math.max(4, tx - tip.offsetWidth - 10) : tx + 10) + "px";
+  };
+  const hide = () => { tip.hidden = true; cross.setAttribute("visibility", "hidden"); dots.forEach(c => c.setAttribute("visibility", "hidden")); };
+  svg.addEventListener("pointermove", move); svg.addEventListener("pointerdown", move); svg.addEventListener("pointerleave", hide);
+  box.appendChild(svg); box.appendChild(tip);
+}
+// table view of the chart data
+document.getElementById("steptable").innerHTML = "<table><thead><tr><th>Mode</th><th>Head</th>" + [1,2,3,4,5,6,7].map(s => `<th class="n">s=${s}</th>`).join("") + "</tr></thead><tbody>" +
+  Object.values(DATA).map(d => HEADS.map(h => `<tr><td>${d.title}</td><td>${h.name}</td>${d[h.id].map(v => `<td class="n">${v.toFixed(3)}</td>`).join("")}</tr>`).join("")).join("") + "</tbody></table>";
+</script>
